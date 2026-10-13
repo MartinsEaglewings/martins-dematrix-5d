@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#080d18">
+  <title>Martins DeMatrix 5D Open World</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="game">
+    <div id="loading">
+      <div class="loader-orb"></div>
+      <h1>MARTINS <span>DEMATRIX</span></h1>
+      <p id="loading-message">Preparing your world…</p>
+    </div>
+
+    <div id="username-screen" class="join-screen">
+      <form id="join-form" class="join-card">
+        <div class="join-kicker">MULTIPLAYER EXPERIENCE</div>
+        <h1>MARTINS <span>DEMATRIX</span></h1>
+        <p>Enter a username to join the city.</p>
+        <label for="username-input">YOUR PLAYER NAME</label>
+        <input id="username-input" maxlength="20" autocomplete="nickname"
+          placeholder="Enter username" required>
+        <button class="join-submit" type="submit">ENTER THE WORLD</button>
+        <small id="connection-message">Connecting to multiplayer server…</small>
+      </form>
+    </div>
+
+    <div id="hud">
+      <header class="topbar">
+        <div class="brand">MARTINS <span>DEMATRIX</span><small>5D OPEN WORLD</small></div>
+        <div class="status"><i></i> <span id="status-text">STARTING</span></div>
+        <span id="online-count" class="online-count">0 ONLINE</span>
+      </header>
+
+      <section class="mission-card">
+        <small>FREE ROAM</small>
+        <strong id="mode-title">Explore the city</strong>
+        <span id="mode-info">Walk around or find a vehicle.</span>
+      </section>
+
+      <div class="right-controls">
+        <button data-action="camera" class="glass-button">CAMERA</button>
+        <button data-action="run" class="glass-button">RUN: OFF</button>
+        <button data-action="enter" id="enter-button" class="gold-button">ENTER CAR</button>
+        <button data-action="plane" id="plane-button" class="gold-button">ENTER PLANE</button>
+        <button data-action="climb" class="glass-button">CLIMB: R</button>
+        <button data-action="descend" class="glass-button">DESCEND: V</button>
+        <button data-action="house" id="house-button" class="gold-button">ENTER HOUSE</button>
+        <button data-action="attack" id="attack-button" class="attack-button">PUNCH</button>
+      </div>
+
+      <div class="left-controls">
+        <div class="dpad">
+          <button data-action="forward" aria-label="Forward">▲</button>
+          <div class="dpad-row">
+            <button data-action="left" aria-label="Left">◀</button>
+            <button data-action="back" aria-label="Back">▼</button>
+            <button data-action="right" aria-label="Right">▶</button>
+          </div>
+        </div>
+        <span class="control-hint">HOLD TO MOVE</span>
+      </div>
+
+      <div class="bottom-hud">
+        <div class="location"><span class="location-dot"></span><div><small>LOCATION</small><strong id="location-text">DEMATRIX CITY</strong></div></div>
+        <div class="speed"><strong id="speed">0</strong><small>KM/H</small></div>
+      </div>
+      <section id="voice-panel" aria-label="Voice chat">
+        <button id="voice-toggle" type="button" aria-pressed="false">🎙 MIC OFF</button>
+        <span id="voice-status" role="status">Voice chat off</span>
+      </section>
+      <div id="toast" role="status"></div>
+    </div>
+    <button id="hud-toggle" class="overlay-toggle" type="button" aria-pressed="false">HIDE HUD</button>
+    <button id="map-toggle" class="overlay-toggle map-toggle" type="button" aria-expanded="true">HIDE MAP</button>
+    <section id="minimap-panel" aria-label="Game map">
+      <div class="map-heading"><strong>CITY RADAR</strong><span id="map-players">0 PLAYERS</span></div>
+      <canvas id="minimap" width="240" height="240" aria-label="Top-down city map"></canvas>
+      <div class="map-legend">
+        <span><i class="legend-you"></i>You</span>
+        <span><i class="legend-player"></i>Players</span>
+        <span><i class="legend-gun"></i>Guns</span>
+        <span><i class="legend-sword"></i>Swords</span>
+      </div>
+    </section>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    window.addEventListener('error', function (event) {
+      const el = document.getElementById('connection-message');
+      if (el) el.textContent = 'Browser error: ' +
+        (event.message || 'script failed') +
+        ' | File: ' + (event.filename || 'unknown') +
+        ' | Line: ' + (event.lineno || '?') +
+        ' | Column: ' + (event.colno || '?');
+    });
+    const el = document.getElementById('connection-message');
+    if (el) el.textContent = typeof window.io === 'function'
+      ? 'Socket.IO loaded; starting game code...'
+      : 'ERROR: Socket.IO client did not load.';
+  </script>
+  <script type="module" src="/js/game.js?v=fix20261013a"
+    onerror="document.getElementById('connection-message').textContent='ERROR: Game module or one of its imports failed to load.'"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+:root{color-scheme:dark;--gold:#ffd166;--cyan:#4de7ff;--panel:rgba(8,14,27,.83)}
+*{box-sizing:border-box}
+html,body,#game{margin:0;width:100%;height:100%;overflow:hidden;background:#080d18;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:100%}
+#loading{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#172747,#080d18 70%);text-align:center;transition:opacity .5s}
+#loading.hidden{opacity:0;pointer-events:none}
+#loading h1{font-size:clamp(22px,5vw,38px);letter-spacing:4px;margin:22px 12px 6px}
+#loading h1 span,.brand span{color:var(--gold)}
+#loading p{color:#b5c5da;font-size:13px}
+.loader-orb{width:48px;height:48px;border:3px solid #253a58;border-top-color:var(--cyan);border-right-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#hud{position:absolute;inset:0;pointer-events:none;color:#fff}
+.topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 17px;background:linear-gradient(#050914d9,transparent)}
+.brand{font-size:14px;font-weight:900;letter-spacing:1.5px}
+.brand small{display:block;color:#a7b6ca;font-size:9px;letter-spacing:3px;margin-top:3px}
+.status{font-size:9px;letter-spacing:1px;color:#d3deed;background:#07101fc9;border:1px solid #ffffff20;padding:8px 10px;border-radius:30px}
+.status i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ffd166;margin-right:5px}
+.mission-card{position:absolute;top:88px;left:16px;max-width:220px;padding:12px 15px;border-radius:12px;background:var(--panel);border:1px solid #ffffff20;box-shadow:0 8px 30px #0003}
+.mission-card small,.location small{display:block;color:var(--cyan);font-size:9px;letter-spacing:2px}
+.mission-card strong{display:block;font-size:14px;margin:5px 0}
+.mission-card span{display:block;font-size:11px;color:#b8c7da}
+.right-controls{position:absolute;right:14px;top:92px;display:flex;flex-direction:column;gap:9px;align-items:stretch;width:106px}
+button{font:inherit;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent}
+.glass-button,.gold-button{pointer-events:auto;border-radius:9px;padding:11px 7px;font-size:10px;font-weight:850;letter-spacing:.7px}
+.glass-button{color:#f3f7ff;background:#071322d9;border:1px solid #a7c4e44c}
+.gold-button{color:#17130a;background:linear-gradient(135deg,#ffe9a3,#f6b938);border:1px solid #fff3be;box-shadow:0 4px 18px #ffbf3030}
+.attack-button{pointer-events:auto;border-radius:9px;padding:12px 7px;font-size:11px;font-weight:950;letter-spacing:1px;color:#fff;background:linear-gradient(135deg,#c92f42,#79172b);border:1px solid #ff9aaa;box-shadow:0 4px 18px #ff304530}
+button:active{transform:scale(.96);filter:brightness(1.2)}
+.left-controls{position:absolute;left:16px;bottom:105px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.dpad{display:flex;flex-direction:column;align-items:center;gap:7px}
+.dpad button{pointer-events:auto;width:48px;height:44px;border-radius:12px;color:#fff;font-size:18px;font-weight:900;background:linear-gradient(145deg,#182d49eF,#081321ef);border:1px solid #87c5ff65;box-shadow:0 5px 16px #0005}
+.dpad-row{display:flex;gap:7px}
+.control-hint{font-size:8px;letter-spacing:1.7px;color:#d0dbea;text-shadow:0 2px 6px #000}
+.bottom-hud{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;padding:18px 19px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#050914df)}
+.location{display:flex;gap:10px;align-items:center}
+.location-dot{width:10px;height:10px;background:var(--cyan);border-radius:50%;box-shadow:0 0 14px var(--cyan)}
+.location strong{display:block;font-size:11px;letter-spacing:1px;margin-top:4px}
+.speed{display:flex;align-items:baseline;gap:5px}
+.speed strong{font-size:29px;color:var(--gold);font-variant-numeric:tabular-nums}
+.speed small{font-size:9px;color:#c5d0df;letter-spacing:1px}
+#toast{position:absolute;left:50%;bottom:90px;transform:translate(-50%,12px);opacity:0;max-width:85%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 15px;border-radius:9px;background:#071322ed;border:1px solid #ffd16680;color:#fff2ca;font-size:12px;transition:.2s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:380px){.right-controls{right:8px;top:82px;width:96px;gap:6px}.glass-button,.gold-button,.attack-button{padding:9px 5px;font-size:9px}.mission-card{max-width:170px}}
+@media(min-width:800px){.left-controls{bottom:90px;left:25px}.dpad button{width:55px;height:49px}.right-controls{right:24px;width:125px}.mission-card{left:24px;top:100px}.topbar{padding:22px 25px}.bottom-hud{padding:22px 28px}}
+
+
+/* Martins DeMatrix multiplayer join screen */
+.join-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: radial-gradient(ellipse at top, rgba(24, 48, 79, .97), rgba(4, 8, 18, .98));
+  color: #f5f7ff;
+  font-family: system-ui, sans-serif;
+}
+.join-screen.hidden { display: none !important; }
+.join-card {
+  width: min(100%, 390px);
+  padding: 28px 23px;
+  border: 1px solid rgba(236, 190, 90, .55);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(22, 33, 54, .98), rgba(8, 13, 26, .98));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .4);
+}
+.join-kicker {
+  color: #e9bd5b;
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: 800;
+}
+.join-card h1 { font-size: 23px; margin: 13px 0 8px; }
+.join-card h1 span { color: #e9bd5b; }
+.join-card p { color: #c0cbe0; font-size: 14px; margin-bottom: 24px; }
+.join-card label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #d9b967;
+}
+.join-card input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px;
+  color: #fff;
+  background: #0b1322;
+  border: 1px solid #34465f;
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+}
+.join-card input:focus { border-color: #e9bd5b; }
+.join-submit {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  color: #17120a;
+  background: linear-gradient(90deg, #f3d47e, #d9a73c);
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+.join-card small {
+  display: block;
+  margin-top: 14px;
+  color: #aab7cd;
+  font-size: 11px;
+  text-align: center;
+}
+.online-count {
+  color: #9ce8bd;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+
+/* Martins DeMatrix: compact live map and independent HUD controls */
+.overlay-toggle {
+  position: absolute;
+  z-index: 40;
+  top: 12px;
+  right: 12px;
+  pointer-events: auto;
+  border: 1px solid #ffd1669c;
+  border-radius: 9px;
+  padding: 9px 11px;
+  color: #fff1c2;
+  background: #071322ed;
+  box-shadow: 0 4px 16px #0006;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .7px;
+}
+.map-toggle { top: 51px; }
+#minimap-panel {
+  position: absolute;
+  z-index: 25;
+  top: 168px;
+  left: 12px;
+  width: 154px;
+  padding: 8px;
+  border: 1px solid #77dfff70;
+  border-radius: 13px;
+  background: rgba(5, 13, 27, .88);
+  box-shadow: 0 8px 26px #0007;
+  color: #f5f8ff;
+  pointer-events: auto;
+  backdrop-filter: blur(7px);
+}
+#minimap-panel.hidden { display: none !important; }
+.map-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin: 0 1px 6px;
+}
+.map-heading strong {
+  color: #ffe09a;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.map-heading span {
+  color: #91e9ff;
+  font-size: 7px;
+  white-space: nowrap;
+}
+#minimap {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border: 1px solid #8cb4d444;
+  border-radius: 7px;
+  background: #0b1726;
+}
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  padding: 7px 1px 1px;
+  font-size: 8px;
+  color: #d3deed;
+}
+.map-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.map-legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.legend-you { background: #ffe06b; }
+.legend-player { background: #4de7ff; }
+.legend-gun { background: #ff786e; }
+.legend-sword { background: #c8a4ff; }
+/* Hide HUD information without hiding gameplay controls. */
+#hud.hud-details-hidden .topbar,
+#hud.hud-details-hidden .mission-card,
+#hud.hud-details-hidden .bottom-hud {
+  display: none !important;
+}
+@media (min-width: 800px) {
+  #minimap-panel { top: 175px; left: 20px; width: 210px; padding: 10px; }
+  .overlay-toggle { top: 16px; right: 18px; font-size: 10px; }
+  .map-toggle { top: 58px; }
+  .map-heading strong { font-size: 11px; }
+  .map-heading span { font-size: 9px; }
+}
+
+/* Enterable house interaction button */
+.right-controls { gap: 8px; }
+
+/* Martins DeMatrix 5D voice chat */
+#voice-panel {
+  position:absolute; left:50%; top:82px; transform:translateX(-50%);
+  z-index:8; display:flex; flex-direction:column; align-items:center;
+  gap:5px; pointer-events:auto; max-width:calc(100vw - 220px);
+}
+#voice-toggle {
+  border:1px solid #d6b45f; border-radius:999px; padding:10px 15px;
+  background:linear-gradient(135deg,#18243b,#080d18); color:#ffe6a0;
+  font-size:11px; font-weight:900; letter-spacing:.5px;
+  box-shadow:0 4px 18px #0008; white-space:nowrap;
+}
+#voice-toggle.voice-on {
+  background:linear-gradient(135deg,#0d654d,#12372f);
+  border-color:#53e0ad; color:#eafff6;
+}
+#voice-status {
+  font-size:10px; font-weight:700; color:#e5edf9;
+  text-shadow:0 1px 5px #000; white-space:nowrap;
+}
+@media(max-width:380px) {
+  #voice-panel { top:76px; left:44%; max-width:calc(100vw - 205px); }
+  #voice-toggle { padding:8px 10px; font-size:10px; }
+}
+@media(min-width:800px) {
+  #voice-panel { top:94px; left:50%; }
+}

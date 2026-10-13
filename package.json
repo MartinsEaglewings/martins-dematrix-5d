@@ -1,0 +1,13 @@
+{
+  "name": "martins-dematrix-5d-open-world",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Martins DeMatrix 5D Open World",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.4"
+  }
+}
