@@ -624,6 +624,8 @@ function makePlayer() {
 const remotePlayers = new Map();
 let socket = null;
 let multiplayerJoined = false;
+let multiplayerUsername = '';
+let hasJoinedBefore = false;
 let networkTimer = 0;
 
 function makeRemotePlayer(data) {
@@ -692,9 +694,22 @@ function makeRemotePlayer(data) {
   label.position.y = 3.0;
 
   root.add(avatar, car, label);
+
+  const startX = Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const startZ = Number.isFinite(Number(data.z)) ? Number(data.z) : 0;
+  const startHeading = Number.isFinite(Number(data.heading))
+    ? Number(data.heading) : 0;
+
+  root.position.set(startX, 0, startZ);
+  root.rotation.y = startHeading;
   scene.add(root);
 
-  remotePlayers.set(data.id, { root, avatar, car, label });
+  remotePlayers.set(data.id, {
+    root, avatar, car, label,
+    targetX: startX,
+    targetZ: startZ,
+    targetHeading: startHeading
+  });
   updateRemotePlayer(data);
 }
 
@@ -702,10 +717,34 @@ function updateRemotePlayer(data) {
   const remote = remotePlayers.get(data.id);
   if (!remote) return;
 
-  remote.root.position.set(data.x || 0, 0, data.z || 0);
-  remote.root.rotation.y = Number(data.heading) || 0;
+  const x = Number(data.x);
+  const z = Number(data.z);
+  const heading = Number(data.heading);
+
+  if (Number.isFinite(x)) remote.targetX = x;
+  if (Number.isFinite(z)) remote.targetZ = z;
+  if (Number.isFinite(heading)) remote.targetHeading = heading;
+
   remote.avatar.visible = !data.driving;
   remote.car.visible = !!data.driving;
+}
+
+function updateRemotePlayers(dt) {
+  const alpha = 1 - Math.exp(-14 * Math.max(0, dt));
+
+  for (const remote of remotePlayers.values()) {
+    remote.root.position.x +=
+      (remote.targetX - remote.root.position.x) * alpha;
+    remote.root.position.z +=
+      (remote.targetZ - remote.root.position.z) * alpha;
+
+    const current = remote.root.rotation.y;
+    const difference = Math.atan2(
+      Math.sin(remote.targetHeading - current),
+      Math.cos(remote.targetHeading - current)
+    );
+    remote.root.rotation.y = current + difference * alpha;
+  }
 }
 
 function removeRemotePlayer(id) {
@@ -1264,6 +1303,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), .05);
   update(dt);
+  updateRemotePlayers(dt);
   renderer.render(scene, camera);
 }
 
@@ -1476,7 +1516,16 @@ import('./voice.js').then(({ initVoiceChat }) => {
 socket.on('connect', () => {
   console.log('[DeMatrix] Socket connected:', socket.id);
   const message = document.getElementById('connection-message');
-  if (message) message.textContent = 'Server connected. Choose your username.';
+
+  if (multiplayerUsername && hasJoinedBefore) {
+    if (message) message.textContent =
+      'Connection restored. Rejoining the city…';
+    socket.emit('player:join', { username: multiplayerUsername });
+    return;
+  }
+
+  if (message) message.textContent =
+    'Server connected. Choose your username.';
 });
 
 socket.on('connect_error', (error) => {
@@ -1489,8 +1538,20 @@ socket.on('connect_error', (error) => {
 
 socket.on('disconnect', (reason) => {
   console.warn('[DeMatrix] Socket disconnected:', reason);
+  multiplayerJoined = false;
+
+  for (const id of [...remotePlayers.keys()]) {
+    removeRemotePlayer(id);
+  }
+  refreshOnlineCount();
+
   const message = document.getElementById('connection-message');
-  if (message) message.textContent = 'Disconnected: ' + reason;
+  if (message) {
+    message.textContent = multiplayerUsername
+      ? 'Connection lost. Reconnecting to the city…'
+      : 'Disconnected: ' + reason;
+  }
+  if (statusText) statusText.textContent = 'RECONNECTING';
 });
 
 document.getElementById('join-form')?.addEventListener('submit', event => {
@@ -1502,15 +1563,32 @@ document.getElementById('join-form')?.addEventListener('submit', event => {
   const input = document.getElementById('username-input');
   const username = String(input?.value || '').trim().slice(0, 20);
   if (!username) return;
-  socket.emit('player:join', { username });
+
+  multiplayerUsername = username;
+  hasJoinedBefore = true;
+  socket.emit('player:join', { username: multiplayerUsername });
 });
 
 socket.on('player:welcome', data => {
+  const wasJoined = multiplayerJoined;
   multiplayerJoined = true;
-  for (const other of (data.players || [])) makeRemotePlayer(other);
+
+  for (const id of [...remotePlayers.keys()]) {
+    removeRemotePlayer(id);
+  }
+  for (const other of (data.players || [])) {
+    makeRemotePlayer(other);
+  }
+
   document.getElementById('username-screen')?.classList.add('hidden');
   if (statusText) statusText.textContent = 'MULTIPLAYER ONLINE';
-  notify('Welcome to the multiplayer city!');
+
+  const message = document.getElementById('connection-message');
+  if (message) message.textContent = 'Connected to the multiplayer city.';
+
+  notify(wasJoined
+    ? 'Connection restored. You are back in the city!'
+    : 'Welcome to the multiplayer city!');
   refreshOnlineCount();
 });
 
