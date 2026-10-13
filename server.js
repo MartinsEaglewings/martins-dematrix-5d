@@ -41,7 +41,10 @@ io.on("connection", socket => {
       x: 0,
       z: 3,
       heading: 0,
-      driving: false
+      y: 0,
+      driving: false,
+      flyingPlane: false,
+      vehicleType: "foot"
     };
 
     socket.data.player = player;
@@ -61,9 +64,14 @@ io.on("connection", socket => {
     if (!player || !state) return;
 
     player.x = safeNumber(state.x, player.x);
+    player.y = Math.max(0, Math.min(100, safeNumber(state.y, player.y)));
     player.z = safeNumber(state.z, player.z);
     player.heading = safeNumber(state.heading, player.heading);
-    player.driving = Boolean(state.driving);
+    player.flyingPlane = Boolean(state.flyingPlane);
+    player.driving = !player.flyingPlane && Boolean(state.driving);
+    player.vehicleType = player.flyingPlane
+      ? "plane"
+      : player.driving ? "car" : "foot";
 
     socket.broadcast.emit("player:moved", player);
   });

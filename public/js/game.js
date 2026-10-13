@@ -16,6 +16,7 @@ const toast = $('toast');
 let scene, camera, renderer, clock;
 let player, vehicle, vehicleModel;
 let plane = null, flyingPlane = false;
+let remotePlaneAsset = null;
 let planeSpeed = 0, planeVerticalSpeed = 0;
 const vehicles = [];
 
@@ -693,20 +694,51 @@ function makeRemotePlayer(data) {
   label.scale.set(3.2, .6, 1);
   label.position.y = 3.0;
 
-  root.add(avatar, car, label);
+  // Lightweight remote aircraft for smoother multiplayer rendering.
+  // The local player keeps the full textured FBX aircraft.
+  const remotePlane = new THREE.Group();
+
+  const remoteBody = makeMaterial(0xe8eef7);
+  const remoteWings = makeMaterial(0x38bdf8);
+  const remoteAccent = makeMaterial(0xf5b942);
+  const remoteGlass = makeMaterial(0x17324d);
+  const remoteDark = makeMaterial(0x263238);
+
+  // Fuselage, main wings, and rear stabilizers.
+  addBox(remotePlane, 0.38, 0.36, 2.8, remoteBody, 0, 0.72, 0);
+  addBox(remotePlane, 3.4, 0.12, 0.72, remoteWings, 0, 0.78, 0);
+  addBox(remotePlane, 1.25, 0.10, 0.42, remoteAccent, 0, 0.78, -1.08);
+  addBox(remotePlane, 0.12, 0.48, 0.52, remoteWings, 0, 0.98, -1.08);
+
+  // Pointed nose facing the aircraft's forward (+Z) direction.
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.19, 0.48, 8),
+    remoteBody
+  );
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 0.72, 1.58);
+  remotePlane.add(nose);
+
+  // Cockpit and small dark engine/propeller detail.
+  addBox(remotePlane, 0.25, 0.16, 0.48, remoteGlass, 0, 0.96, 0.35);
+  addBox(remotePlane, 0.72, 0.07, 0.08, remoteDark, 0, 0.72, 1.91);
+
+  root.add(avatar, car, remotePlane, label);
 
   const startX = Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const startY = Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
   const startZ = Number.isFinite(Number(data.z)) ? Number(data.z) : 0;
   const startHeading = Number.isFinite(Number(data.heading))
     ? Number(data.heading) : 0;
 
-  root.position.set(startX, 0, startZ);
+  root.position.set(startX, startY, startZ);
   root.rotation.y = startHeading;
   scene.add(root);
 
   remotePlayers.set(data.id, {
-    root, avatar, car, label,
+    root, avatar, car, plane: remotePlane, label,
     targetX: startX,
+    targetY: startY,
     targetZ: startZ,
     targetHeading: startHeading
   });
@@ -718,15 +750,22 @@ function updateRemotePlayer(data) {
   if (!remote) return;
 
   const x = Number(data.x);
+  const y = Number(data.y);
   const z = Number(data.z);
   const heading = Number(data.heading);
 
   if (Number.isFinite(x)) remote.targetX = x;
+  if (Number.isFinite(y)) remote.targetY = y;
   if (Number.isFinite(z)) remote.targetZ = z;
   if (Number.isFinite(heading)) remote.targetHeading = heading;
 
-  remote.avatar.visible = !data.driving;
-  remote.car.visible = !!data.driving;
+  const flying = Boolean(data.flyingPlane || data.vehicleType === "plane");
+  const inCar = !flying &&
+    (Boolean(data.driving) || data.vehicleType === "car");
+
+  remote.avatar.visible = !flying && !inCar;
+  remote.car.visible = inCar;
+  remote.plane.visible = flying;
 }
 
 function updateRemotePlayers(dt) {
@@ -735,6 +774,8 @@ function updateRemotePlayers(dt) {
   for (const remote of remotePlayers.values()) {
     remote.root.position.x +=
       (remote.targetX - remote.root.position.x) * alpha;
+    remote.root.position.y +=
+      (remote.targetY - remote.root.position.y) * alpha;
     remote.root.position.z +=
       (remote.targetZ - remote.root.position.z) * alpha;
 
@@ -1006,6 +1047,7 @@ function makePlane() {
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
       model.position.set(-center.x, -box.min.y, -center.z);
+
       plane.add(model);
 
       console.log('Low-poly plane loaded successfully.');
@@ -1215,6 +1257,27 @@ function togglePlane() {
   player.visible = false;
   notify('Plane controls ready. Hold forward to accelerate.');
 }
+function sendMultiplayerUpdate(dt) {
+  if (!multiplayerJoined || !socket || !socket.connected) return;
+
+  networkTimer += dt;
+  if (networkTimer < 0.05) return;
+  networkTimer = 0;
+
+  const netEntity = flyingPlane ? plane : driving ? vehicle : player;
+  if (!netEntity) return;
+
+  socket.emit('player:update', {
+    x: netEntity.position.x,
+    y: netEntity.position.y,
+    z: netEntity.position.z,
+    heading: netEntity.rotation.y,
+    driving: Boolean(driving && !flyingPlane),
+    flyingPlane: Boolean(flyingPlane),
+    vehicleType: flyingPlane ? 'plane' : driving ? 'car' : 'foot'
+  });
+}
+
 function update(dt) {
   const forward = (keys.has('forward') || keys.has('w') ? 1 : 0) -
     (keys.has('back') || keys.has('s') ? 1 : 0);
@@ -1223,6 +1286,7 @@ function update(dt) {
 
   if (flyingPlane) {
     updatePlane(dt, forward, turn);
+    sendMultiplayerUpdate(dt);
     return;
   }
 
@@ -1265,19 +1329,7 @@ function update(dt) {
     }
   }
 
-  if (multiplayerJoined && socket && socket.connected) {
-    networkTimer += dt;
-    if (networkTimer >= 0.05) {
-      networkTimer = 0;
-      const netEntity = driving ? vehicle : player;
-      socket.emit('player:update', {
-        x: netEntity.position.x,
-        z: netEntity.position.z,
-        heading: netEntity.rotation.y,
-        driving
-      });
-    }
-  }
+  sendMultiplayerUpdate(dt);
 
   const active = driving ? vehicle : player;
   const behind = cameraMode % 2 === 0 ? 1 : -1;
